@@ -1,0 +1,49 @@
+# Publishes n8n-nodes-mesakem to npm, with an npm provenance statement, on every version tag push.
+# n8n requires community nodes to be published from GitHub Actions with provenance.
+#
+# First release: add a granular npm token (publish rights for this package) as the repository
+# secret NPM_TOKEN. After the first release, switch the package to npm Trusted Publishing
+# (npmjs.com -> package -> Settings -> Trusted Publishers -> GitHub Actions, workflow publish.yml)
+# and delete the NPM_TOKEN secret.
+#
+# Release: run `npm run release` locally (lint, build, version bump, changelog, tag, push).
+# The pushed tag (e.g. 0.1.0) triggers this workflow.
+
+name: Publish
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Release
+        run: |
+          [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          npm run release
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
